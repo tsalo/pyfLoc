@@ -258,9 +258,9 @@ if __name__ == '__main__':
         name='instructions',
         text=instruction_text,
         font=u'Arial',
-        height=40,
+        height=50,
         pos=(0, 0),
-        wrapWidth=600,
+        wrapWidth=900,
         ori=0,
         color='white',
         colorSpace='rgb',
@@ -319,7 +319,9 @@ if __name__ == '__main__':
             stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.jpg'.format(stimulus_folder))) for
                               stimulus_folder in stimulus_folders[category]]
             # Unravel list of lists
-            stimulus_files = [op.realpath(item) for sublist in stimulus_files for item in sublist]
+            stimulus_files = [item for sublist in stimulus_files for item in sublist]
+            # Clean up paths
+            stimulus_files = [op.realpath(item).replace('\\', '/') for item in stimulus_files]
             stimuli[category] = stimulus_files
         else:
             stimuli[category] = None  # baseline trials just have fixation
@@ -344,6 +346,7 @@ if __name__ == '__main__':
     run_clock = core.Clock()  # to track time since each run starts (post scanner pulse)
     miniblock_clock = core.Clock()  # to track duration of each miniblock
     trial_clock = core.Clock()  # to track duration of each trial
+    fixation_trial_clock = core.Clock()  # to account for fixation time spent loading image
 
     for i_run in range(n_runs):
         COLUMNS = ['onset', 'duration', 'trial_type', 'miniblock_number',
@@ -456,7 +459,7 @@ if __name__ == '__main__':
                     target_idx = None
 
                 for k_stim, stim_file in enumerate(miniblock_stimuli):
-                    stim_file = stim_file.replace('\\', '/')
+                    fixation_trial_clock.reset()
                     stim_image.image = stim_file
                     trial_clock.reset()
                     onset_time = run_clock.getTime()
@@ -466,7 +469,8 @@ if __name__ == '__main__':
                     run_responses += [resp[0] for resp in responses]
                     run_response_times += [resp[1] for resp in responses]
                     duration = trial_clock.getTime()
-                    isi_dur = np.maximum(constants['TRIAL_DURATION'] - duration, 0)
+                    loading_plus_stim_duration = fixation_trial_clock.getTime()
+                    isi_dur = np.maximum(constants['TRIAL_DURATION'] - loading_plus_stim_duration, 0)
                     responses, _ = draw(win=window, stim=fixation,
                                         duration=isi_dur, clock=run_clock)
 
